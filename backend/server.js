@@ -8,6 +8,8 @@ import {
   checkKaprukaDelivery,
   trackKaprukaOrder,
   createKaprukaOrder,
+  listKaprukaCategories,
+  listKaprukaDeliveryCities,
 } from "./mcpClient.js";
 
 dotenv.config();
@@ -202,6 +204,27 @@ app.post("/create-order", async (req, res) => {
     res.status(500).json({
       error: "Failed to create Kapruka order",
     });
+  }
+});
+
+app.get("/categories", async (req, res) => {
+  try {
+    const result = await listKaprukaCategories();
+    res.json(result);
+  } catch (error) {
+    console.error("Categories error:", error);
+    res.status(500).json({ error: "Failed to list categories" });
+  }
+});
+
+app.get("/delivery-cities", async (req, res) => {
+  try {
+    const query = req.query.query || "";
+    const result = await listKaprukaDeliveryCities(query);
+    res.json(result);
+  } catch (error) {
+    console.error("Delivery cities error:", error);
+    res.status(500).json({ error: "Failed to list delivery cities" });
   }
 });
 

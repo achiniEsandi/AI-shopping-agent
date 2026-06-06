@@ -158,3 +158,54 @@ export async function createKaprukaOrder(orderData) {
 
   return JSON.parse(result.content[0].text);
 }
+
+export async function listKaprukaCategories() {
+  const client = new Client({
+    name: "kapruka-ai-shopping-agent",
+    version: "1.0.0",
+  });
+
+  const transport = new StreamableHTTPClientTransport(new URL(MCP_SERVER_URL));
+
+  await client.connect(transport);
+
+  const result = await client.callTool({
+    name: "kapruka_list_categories",
+    arguments: {
+      params: {
+        depth: 1,
+        response_format: "json",
+      },
+    },
+  });
+
+  await client.close();
+
+  return JSON.parse(result.content[0].text);
+}
+
+export async function listKaprukaDeliveryCities(query = "") {
+  const client = new Client({
+    name: "kapruka-ai-shopping-agent",
+    version: "1.0.0",
+  });
+
+  const transport = new StreamableHTTPClientTransport(new URL(MCP_SERVER_URL));
+
+  await client.connect(transport);
+
+  const result = await client.callTool({
+    name: "kapruka_list_delivery_cities",
+    arguments: {
+      params: {
+        query,
+        limit: 50,
+        response_format: "json",
+      },
+    },
+  });
+
+  await client.close();
+
+  return JSON.parse(result.content[0].text);
+}
