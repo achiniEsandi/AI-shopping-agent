@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
+import { searchKaprukaProducts } from "./mcpClient.js";
 
 dotenv.config();
 
@@ -38,6 +39,20 @@ User message: ${message}
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+app.get("/test-search", async (req, res) => {
+  try {
+    const query = req.query.q || "birthday cake";
+    const result = await searchKaprukaProducts(query);
+
+    res.json(result);
+  } catch (error) {
+    console.error("MCP search error:", error);
+    res.status(500).json({
+      error: "Failed to search Kapruka products",
+    });
   }
 });
 
