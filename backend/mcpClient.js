@@ -66,3 +66,36 @@ export async function getKaprukaProduct(productId) {
 
   return JSON.parse(result.content[0].text);
 }
+
+export async function checkKaprukaDelivery(
+  city,
+  deliveryDate,
+  productId
+) {
+  const client = new Client({
+    name: "kapruka-ai-shopping-agent",
+    version: "1.0.0",
+  });
+
+  const transport = new StreamableHTTPClientTransport(
+    new URL(MCP_SERVER_URL)
+  );
+
+  await client.connect(transport);
+
+  const result = await client.callTool({
+    name: "kapruka_check_delivery",
+    arguments: {
+      params: {
+        city,
+        delivery_date: deliveryDate,
+        product_id: productId,
+        response_format: "json",
+      },
+    },
+  });
+
+  await client.close();
+
+  return JSON.parse(result.content[0].text);
+}

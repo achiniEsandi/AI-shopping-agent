@@ -2,7 +2,11 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
-import { searchKaprukaProducts, getKaprukaProduct } from "./mcpClient.js";
+import {
+  searchKaprukaProducts,
+  getKaprukaProduct,
+  checkKaprukaDelivery,
+} from "./mcpClient.js";
 
 dotenv.config();
 
@@ -129,6 +133,27 @@ app.get("/product/:id", async (req, res) => {
     console.error("Product details error:", error);
     res.status(500).json({
       error: "Failed to get Kapruka product details",
+    });
+  }
+});
+
+app.get("/delivery-check", async (req, res) => {
+  try {
+    const { city, date, productId } = req.query;
+
+    if (!city) {
+      return res.status(400).json({
+        error: "City is required",
+      });
+    }
+
+    const result = await checkKaprukaDelivery(city, date, productId);
+
+    res.json(result);
+  } catch (error) {
+    console.error("Delivery check error:", error);
+    res.status(500).json({
+      error: "Failed to check delivery",
     });
   }
 });
