@@ -2,6 +2,8 @@ import { useState } from "react";
 import "./App.css";
 
 function App() {
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [loadingProductId, setLoadingProductId] = useState(null);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -49,6 +51,20 @@ function App() {
     }
   };
 
+    const handleViewDetails = async (productId) => {
+      setLoadingProductId(productId);
+
+      try {
+        const response = await fetch(`http://localhost:5000/product/${productId}`);
+        const data = await response.json();
+        setSelectedProduct(data);
+      } catch (error) {
+        alert("Failed to load product details");
+      } finally {
+        setLoadingProductId(null);
+      }
+    };
+
   return (
     <div className="app">
       <div className="chat-container">
@@ -66,9 +82,12 @@ function App() {
                       <img src={product.image} alt={product.name} />
                       <h3>{product.name}</h3>
                       <p>LKR {product.price?.toLocaleString()}</p>
-                      <a href={product.url} target="_blank" rel="noreferrer">
-                        View Product
-                      </a>
+                     <button
+                        className="details-btn"
+                        onClick={() => handleViewDetails(product.id)}
+                      >
+                        {loadingProductId === product.id ? "Loading..." : "View Details"}
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -95,6 +114,35 @@ function App() {
           </button>
         </div>
       </div>
+
+      {selectedProduct && (
+  <div className="modal-overlay">
+    <div className="modal">
+      <button className="close-btn" onClick={() => setSelectedProduct(null)}>
+        ×
+      </button>
+
+      <img
+        src={selectedProduct.images?.[0]}
+        alt={selectedProduct.name}
+        className="modal-image"
+      />
+
+      <h2>{selectedProduct.name}</h2>
+      <p className="modal-price">
+        LKR {selectedProduct.price?.amount?.toLocaleString()}
+      </p>
+      <p>{selectedProduct.description}</p>
+      <p>
+        <strong>Stock:</strong>{" "}
+        {selectedProduct.in_stock ? "Available" : "Out of stock"}
+      </p>
+      <p>
+        <strong>Category:</strong> {selectedProduct.category?.name}
+      </p>
+    </div>
+  </div>
+)}
     </div>
   );
 }

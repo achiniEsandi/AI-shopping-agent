@@ -79,31 +79,45 @@ app.post("/chat", async (req, res) => {
     const searchedProducts = await searchKaprukaProducts(searchQuery);
     const products = filterProducts(searchedProducts, message);
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: `
-You are a friendly AI shopping assistant for Kapruka.
+let reply = "";
 
-Use ONLY the real Kapruka products provided below.
-Do not invent product names, prices, product IDs, images, or links.
-If the products are not suitable, politely ask the user to try a more specific search.
+try {
+        const response = await ai.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: `
+        You are a friendly AI shopping assistant for Kapruka.
 
-User message:
-${message}
+        Use ONLY the real Kapruka products provided below.
+        Do not invent product names, prices, product IDs, images, or links.
+        If the products are not suitable, politely ask the user to try a more specific search.
 
-Available Kapruka products:
-${JSON.stringify(products, null, 2)}
+        User message:
+        ${message}
 
-Reply briefly in 1-2 sentences only.
-Do not list all products.
-The frontend will display the product cards separately.
-`,
-    });
+        Available Kapruka products:
+        ${JSON.stringify(products, null, 2)}
 
-    res.json({
-      reply: response.text,
-      products,
-    });
+        Reply briefly in 1-2 sentences only.
+        Do not list all products.
+        The frontend will display the product cards separately.
+        `,
+        });
+
+        reply = response.text;
+        } catch (geminiError) {
+        console.error("Gemini error:", geminiError);
+
+        if (products.length > 0) {
+            reply = `I found ${products.length} matching Kapruka products for you. Please check the product cards below.`;
+        } else {
+            reply = "I couldn't find matching Kapruka products. Please try a more specific search.";
+        }
+        }
+
+        res.json({
+        reply,
+        products,
+        });
   } catch (error) {
     console.error("Chat error:", error);
     res.status(500).json({ error: "Something went wrong" });
