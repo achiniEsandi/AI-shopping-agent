@@ -4,7 +4,6 @@ import "./App.css";
 function App() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const handleSend = async () => {
@@ -12,10 +11,7 @@ function App() {
 
     const userMessage = message;
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", text: userMessage },
-    ]);
+    setMessages((prev) => [...prev, { role: "user", text: userMessage }]);
 
     setMessage("");
     setLoading(true);
@@ -30,13 +26,13 @@ function App() {
       });
 
       const data = await response.json();
-      setProducts(data.products || []);
 
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           text: data.reply || "Sorry, I could not find a response.",
+          products: data.products || [],
         },
       ]);
     } catch (error) {
@@ -45,6 +41,7 @@ function App() {
         {
           role: "assistant",
           text: "Sorry, I could not connect to the backend.",
+          products: [],
         },
       ]);
     } finally {
@@ -59,31 +56,29 @@ function App() {
 
         <div className="chat-box">
           {messages.map((msg, index) => (
-            <div key={index} className={`message ${msg.role}`}>
-              {msg.text}
+            <div key={index}>
+              <div className={`message ${msg.role}`}>{msg.text}</div>
+
+              {msg.products?.length > 0 && (
+                <div className="product-grid">
+                  {msg.products.map((product) => (
+                    <div className="product-card" key={product.id}>
+                      <img src={product.image} alt={product.name} />
+                      <h3>{product.name}</h3>
+                      <p>LKR {product.price?.toLocaleString()}</p>
+                      <a href={product.url} target="_blank" rel="noreferrer">
+                        View Product
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
 
           {loading && (
-            <div className="message assistant">
-              Searching Kapruka products...
-            </div>
+            <div className="message assistant">Searching Kapruka products...</div>
           )}
-
-          {products.length > 0 && (
-  <div className="product-grid">
-    {products.map((product) => (
-      <div className="product-card" key={product.id}>
-        <img src={product.image} alt={product.name} />
-        <h3>{product.name}</h3>
-        <p>LKR {product.price?.toLocaleString()}</p>
-        <a href={product.url} target="_blank" rel="noreferrer">
-          View Product
-        </a>
-      </div>
-    ))}
-  </div>
-)}
         </div>
 
         <div className="input-row">
