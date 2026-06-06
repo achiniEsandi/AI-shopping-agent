@@ -28,9 +28,16 @@ export async function searchKaprukaProducts(query) {
 
   await client.close();
 
-  const rawData = JSON.parse(result.content[0].text);
+const text = result.content?.[0]?.text || "";
 
-  return rawData.results.map((product) => ({
+if (result.isError || text.startsWith("Error")) {
+  console.error("MCP returned error:", text);
+  return [];
+}
+
+const rawData = JSON.parse(text);
+
+return (rawData.results || []).map((product) => ({
     id: product.id,
     name: product.name,
     summary: product.summary,

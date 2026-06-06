@@ -94,8 +94,9 @@ ${message}
 Available Kapruka products:
 ${JSON.stringify(products, null, 2)}
 
-Reply in a helpful way.
-Mention product name, price in LKR, and link.
+Reply briefly in 1-2 sentences only.
+Do not list all products.
+The frontend will display the product cards separately.
 `,
     });
 

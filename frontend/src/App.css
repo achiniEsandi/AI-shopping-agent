@@ -71,3 +71,41 @@ button {
   color: white;
   cursor: pointer;
 }
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.product-card {
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+
+.product-card img {
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.product-card h3 {
+  font-size: 15px;
+  margin: 10px 0;
+}
+
+.product-card p {
+  font-weight: bold;
+  color: #d71920;
+}
+
+.product-card a {
+  display: inline-block;
+  margin-top: 8px;
+  color: #d71920;
+  font-weight: bold;
+}
