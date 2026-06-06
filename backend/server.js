@@ -7,6 +7,7 @@ import {
   getKaprukaProduct,
   checkKaprukaDelivery,
   trackKaprukaOrder,
+  createKaprukaOrder,
 } from "./mcpClient.js";
 
 dotenv.config();
@@ -170,6 +171,21 @@ app.get("/track-order/:orderNumber", async (req, res) => {
     console.error("Order tracking error:", error);
     res.status(500).json({
       error: "Failed to track Kapruka order",
+    });
+  }
+});
+
+app.post("/create-order", async (req, res) => {
+  try {
+    const orderData = req.body;
+
+    const result = await createKaprukaOrder(orderData);
+
+    res.json(result);
+  } catch (error) {
+    console.error("Create order error:", error);
+    res.status(500).json({
+      error: "Failed to create Kapruka order",
     });
   }
 });
