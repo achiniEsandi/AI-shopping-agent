@@ -30,5 +30,16 @@ export async function searchKaprukaProducts(query) {
 
   await client.close();
 
-  return result;
+  const rawData = JSON.parse(
+  result.content[0].text
+);
+
+return rawData.results.map((product) => ({
+  id: product.id,
+  name: product.name,
+  price: product.price?.amount,
+  currency: product.price?.currency,
+  image: product.image_url,
+  url: product.url,
+}));
 }
