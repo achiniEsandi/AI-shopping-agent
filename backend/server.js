@@ -141,7 +141,7 @@ JSON format:
     const text = response.text.trim();
     return JSON.parse(text);
   } catch {
-    console.error("Intent extraction failed. Using fallback intent.");
+    console.log("Gemini unavailable. Using local intent fallback.");
     return extractIntentWithoutGemini(message);
   }
 }
@@ -281,7 +281,7 @@ The frontend will display the product cards separately.
 
     return response.text || createFallbackReply(products);
   } catch {
-    console.error("Gemini reply failed. Using fallback reply.");
+    console.log("Gemini unavailable. Using template reply.");
     return createFallbackReply(products);
   }
 }
