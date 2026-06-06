@@ -3,7 +3,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 
 const MCP_SERVER_URL = "https://mcp.kapruka.com/mcp";
 
-export async function searchKaprukaProducts(query) {
+async function callKaprukaTool(toolName, params) {
   const client = new Client({
     name: "kapruka-ai-shopping-agent",
     version: "1.0.0",
@@ -11,33 +11,59 @@ export async function searchKaprukaProducts(query) {
 
   const transport = new StreamableHTTPClientTransport(new URL(MCP_SERVER_URL));
 
-  await client.connect(transport);
+  try {
+    await client.connect(transport);
 
-  const result = await client.callTool({
-    name: "kapruka_search_products",
-    arguments: {
-      params: {
-        q: query,
-        limit: 10,
-        currency: "LKR",
-        in_stock_only: true,
-        response_format: "json",
-      },
-    },
-  });
+    const result = await client.callTool({
+      name: toolName,
+      arguments: { params },
+    });
 
-  await client.close();
+    const text = result.content?.[0]?.text || "";
 
-const text = result.content?.[0]?.text || "";
+    if (result.isError || text.startsWith("Error")) {
+      console.error(`MCP tool error from ${toolName}:`, text);
+      return null;
+    }
 
-if (result.isError || text.startsWith("Error")) {
-  console.error("MCP returned error:", text);
-  return [];
+    try {
+      return JSON.parse(text);
+    } catch {
+      console.error(`Non-JSON response from ${toolName}:`, text);
+      return null;
+    }
+  } finally {
+    await client.close();
+  }
 }
 
-const rawData = JSON.parse(text);
+export async function searchKaprukaProducts({
+  query,
+  category = null,
+  minPrice = null,
+  maxPrice = null,
+  limit = 10,
+  sort = "relevance",
+}) {
+  if (!query || query.trim().length < 3) {
+    return [];
+  }
 
-return (rawData.results || []).map((product) => ({
+  const data = await callKaprukaTool("kapruka_search_products", {
+    q: query,
+    category,
+    min_price: minPrice,
+    max_price: maxPrice,
+    limit,
+    sort,
+    currency: "LKR",
+    in_stock_only: true,
+    response_format: "json",
+  });
+
+  if (!data?.results) return [];
+
+  return data.results.map((product) => ({
     id: product.id,
     name: product.name,
     summary: product.summary,
@@ -45,167 +71,53 @@ return (rawData.results || []).map((product) => ({
     currency: product.price?.currency,
     image: product.image_url,
     url: product.url,
+    category: product.category?.name,
+    inStock: product.in_stock,
   }));
 }
 
 export async function getKaprukaProduct(productId) {
-  const client = new Client({
-    name: "kapruka-ai-shopping-agent",
-    version: "1.0.0",
+  return await callKaprukaTool("kapruka_get_product", {
+    product_id: productId,
+    currency: "LKR",
+    response_format: "json",
   });
-
-  const transport = new StreamableHTTPClientTransport(new URL(MCP_SERVER_URL));
-
-  await client.connect(transport);
-
-  const result = await client.callTool({
-    name: "kapruka_get_product",
-    arguments: {
-      params: {
-        product_id: productId,
-        currency: "LKR",
-        response_format: "json",
-      },
-    },
-  });
-
-  await client.close();
-
-  return JSON.parse(result.content[0].text);
 }
 
-export async function checkKaprukaDelivery(
-  city,
-  deliveryDate,
-  productId
-) {
-  const client = new Client({
-    name: "kapruka-ai-shopping-agent",
-    version: "1.0.0",
+export async function checkKaprukaDelivery(city, deliveryDate, productId) {
+  return await callKaprukaTool("kapruka_check_delivery", {
+    city,
+    delivery_date: deliveryDate,
+    product_id: productId,
+    response_format: "json",
   });
-
-  const transport = new StreamableHTTPClientTransport(
-    new URL(MCP_SERVER_URL)
-  );
-
-  await client.connect(transport);
-
-  const result = await client.callTool({
-    name: "kapruka_check_delivery",
-    arguments: {
-      params: {
-        city,
-        delivery_date: deliveryDate,
-        product_id: productId,
-        response_format: "json",
-      },
-    },
-  });
-
-  await client.close();
-
-  return JSON.parse(result.content[0].text);
 }
 
 export async function trackKaprukaOrder(orderNumber) {
-  const client = new Client({
-    name: "kapruka-ai-shopping-agent",
-    version: "1.0.0",
+  return await callKaprukaTool("kapruka_track_order", {
+    order_number: orderNumber,
+    response_format: "json",
   });
-
-  const transport = new StreamableHTTPClientTransport(new URL(MCP_SERVER_URL));
-
-  await client.connect(transport);
-
-  const result = await client.callTool({
-    name: "kapruka_track_order",
-    arguments: {
-      params: {
-        order_number: orderNumber,
-        response_format: "json",
-      },
-    },
-  });
-
-  await client.close();
-
-  return JSON.parse(result.content[0].text);
 }
 
 export async function createKaprukaOrder(orderData) {
-  const client = new Client({
-    name: "kapruka-ai-shopping-agent",
-    version: "1.0.0",
+  return await callKaprukaTool("kapruka_create_order", {
+    ...orderData,
+    response_format: "json",
   });
-
-  const transport = new StreamableHTTPClientTransport(
-    new URL(MCP_SERVER_URL)
-  );
-
-  await client.connect(transport);
-
-  const result = await client.callTool({
-    name: "kapruka_create_order",
-    arguments: {
-      params: {
-        ...orderData,
-        response_format: "json",
-      },
-    },
-  });
-
-  await client.close();
-
-  return JSON.parse(result.content[0].text);
 }
 
 export async function listKaprukaCategories() {
-  const client = new Client({
-    name: "kapruka-ai-shopping-agent",
-    version: "1.0.0",
+  return await callKaprukaTool("kapruka_list_categories", {
+    depth: 1,
+    response_format: "json",
   });
-
-  const transport = new StreamableHTTPClientTransport(new URL(MCP_SERVER_URL));
-
-  await client.connect(transport);
-
-  const result = await client.callTool({
-    name: "kapruka_list_categories",
-    arguments: {
-      params: {
-        depth: 1,
-        response_format: "json",
-      },
-    },
-  });
-
-  await client.close();
-
-  return JSON.parse(result.content[0].text);
 }
 
 export async function listKaprukaDeliveryCities(query = "") {
-  const client = new Client({
-    name: "kapruka-ai-shopping-agent",
-    version: "1.0.0",
+  return await callKaprukaTool("kapruka_list_delivery_cities", {
+    query,
+    limit: 50,
+    response_format: "json",
   });
-
-  const transport = new StreamableHTTPClientTransport(new URL(MCP_SERVER_URL));
-
-  await client.connect(transport);
-
-  const result = await client.callTool({
-    name: "kapruka_list_delivery_cities",
-    arguments: {
-      params: {
-        query,
-        limit: 50,
-        response_format: "json",
-      },
-    },
-  });
-
-  await client.close();
-
-  return JSON.parse(result.content[0].text);
 }
