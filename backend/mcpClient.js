@@ -99,3 +99,28 @@ export async function checkKaprukaDelivery(
 
   return JSON.parse(result.content[0].text);
 }
+
+export async function trackKaprukaOrder(orderNumber) {
+  const client = new Client({
+    name: "kapruka-ai-shopping-agent",
+    version: "1.0.0",
+  });
+
+  const transport = new StreamableHTTPClientTransport(new URL(MCP_SERVER_URL));
+
+  await client.connect(transport);
+
+  const result = await client.callTool({
+    name: "kapruka_track_order",
+    arguments: {
+      params: {
+        order_number: orderNumber,
+        response_format: "json",
+      },
+    },
+  });
+
+  await client.close();
+
+  return JSON.parse(result.content[0].text);
+}
