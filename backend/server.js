@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
-import { searchKaprukaProducts } from "./mcpClient.js";
+import { searchKaprukaProducts, getKaprukaProduct } from "./mcpClient.js";
 
 dotenv.config();
 
@@ -118,6 +118,20 @@ app.get("/test-search", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+
+app.get("/product/:id", async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const product = await getKaprukaProduct(productId);
+
+    res.json(product);
+  } catch (error) {
+    console.error("Product details error:", error);
+    res.status(500).json({
+      error: "Failed to get Kapruka product details",
+    });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

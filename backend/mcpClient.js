@@ -40,3 +40,29 @@ export async function searchKaprukaProducts(query) {
     url: product.url,
   }));
 }
+
+export async function getKaprukaProduct(productId) {
+  const client = new Client({
+    name: "kapruka-ai-shopping-agent",
+    version: "1.0.0",
+  });
+
+  const transport = new StreamableHTTPClientTransport(new URL(MCP_SERVER_URL));
+
+  await client.connect(transport);
+
+  const result = await client.callTool({
+    name: "kapruka_get_product",
+    arguments: {
+      params: {
+        product_id: productId,
+        currency: "LKR",
+        response_format: "json",
+      },
+    },
+  });
+
+  await client.close();
+
+  return JSON.parse(result.content[0].text);
+}
