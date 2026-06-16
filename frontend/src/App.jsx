@@ -731,7 +731,7 @@ function App() {
                                   className="btn-add-cart" 
                                   title="Add to Cart"
                                 >
-                                  <ShoppingBag size={12} />
+                                  <ShoppingBag size={14} />
                                 </button>
                                 <button onClick={() => handleViewDetails(product.id)} className="btn-details">
                                   {loadingProductId === product.id ? (
