@@ -11,6 +11,7 @@ import {
   listKaprukaCategories,
   listKaprukaDeliveryCities,
 } from "./mcpClient.js";
+import { normalizeMessageToIntent } from "./sriLankanHelper.js";
 
 dotenv.config();
 
@@ -96,7 +97,7 @@ function extractIntentWithoutGemini(message) {
   if (!query) {
     query = message
       .replace(
-        /(?:under|below|less than|max|maximum|over|above|more than|min|minimum|between|and|to|rs\.?|lkr|rupees|\d+)/gi,
+        /(?:under|below|less than|max|maximum|over|above|more than|between|and|to|rs\.?|lkr|rupees|\d+)/gi,
         ""
       )
       .replace(/[^\w\s]/g, "")
@@ -117,11 +118,16 @@ function extractIntentWithoutGemini(message) {
 }
 
 async function extractShoppingIntent(message) {
+  // 1. Parse using local NLP baseline dictionary and regex logic
+  const localIntent = normalizeMessageToIntent(message);
+
   try {
+    // 2. Query Gemini for extraction/refinement
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
       contents: `
-Extract shopping intent from this user message.
+Extract shopping intent from this user message. The message can be in English, Sinhala (Unicode), or Tanglish (Sinhala in English letters).
+Produce the query, category, minPrice, maxPrice, deliveryDate, and city in English mapping.
 
 Return ONLY valid JSON. Do not include markdown.
 
@@ -130,19 +136,34 @@ User message:
 
 JSON format:
 {
-  "query": "short product search phrase",
-  "category": null,
-  "minPrice": null,
-  "maxPrice": null
+  "query": "short product search phrase in English (e.g. 'cake', 'flowers', 'perfume')",
+  "category": "matched category slug in English (e.g. 'cakes', 'flowers', 'chocolates', 'KidsToys', 'Perfumes', 'Books', 'Fruits', 'Jewellery') or null",
+  "minPrice": number or null,
+  "maxPrice": number or null,
+  "deliveryDate": "YYYY-MM-DD or null",
+  "city": "Colombo or Kandy or Galle or Negombo or Kurunegala or null"
 }
 `,
     });
 
     const text = response.text.trim();
-    return JSON.parse(text);
-  } catch {
-    console.log("Gemini unavailable. Using local intent fallback.");
-    return extractIntentWithoutGemini(message);
+    const geminiIntent = JSON.parse(text);
+    
+    // Merge Gemini result and local baseline results
+    return {
+      language: localIntent.language,
+      query: geminiIntent.query || localIntent.query || "gift",
+      category: geminiIntent.category || localIntent.category,
+      minPrice: geminiIntent.minPrice !== undefined ? geminiIntent.minPrice : localIntent.minPrice,
+      maxPrice: geminiIntent.maxPrice !== undefined ? geminiIntent.maxPrice : localIntent.maxPrice,
+      deliveryDate: geminiIntent.deliveryDate || localIntent.deliveryDate,
+      city: geminiIntent.city || localIntent.city,
+      recipient: localIntent.recipient,
+      occasion: localIntent.occasion
+    };
+  } catch (err) {
+    console.log("Gemini unavailable or returned invalid JSON. Using local intent baseline fallback.", err);
+    return localIntent;
   }
 }
 
@@ -184,7 +205,7 @@ function getFallbackSearches(message, intent) {
     ];
   }
 
-  if (lower.includes("mother") || lower.includes("mom") || lower.includes("ammi")) {
+  if (lower.includes("mother") || lower.includes("mom") || lower.includes("ammi") || lower.includes("amma")) {
     return [
       { query: "mother gift", category: "mother" },
       { query: "flowers", category: "flowers" },
@@ -193,7 +214,7 @@ function getFallbackSearches(message, intent) {
     ];
   }
 
-  if (lower.includes("birthday")) {
+  if (lower.includes("birthday") || lower.includes("upandinaya")) {
     return [
       { query: "birthday gift", category: "birthday" },
       { query: "cake", category: "cakes" },
@@ -212,7 +233,7 @@ function getFallbackSearches(message, intent) {
 async function searchWithFallbacks(message, intent) {
   let products = await searchKaprukaProducts({
     query: intent.query || "gift",
-    category: null,
+    category: intent.category || null,
     minPrice: intent.minPrice || null,
     maxPrice: intent.maxPrice || null,
     limit: 10,
@@ -230,7 +251,7 @@ async function searchWithFallbacks(message, intent) {
   for (const search of fallbackSearches) {
     const result = await searchKaprukaProducts({
       query: search.query,
-      category: null,
+      category: search.category || null,
       minPrice: intent.minPrice || null,
       maxPrice: intent.maxPrice || null,
       limit: 10,
@@ -246,16 +267,38 @@ async function searchWithFallbacks(message, intent) {
   return removeDuplicateProducts(fallbackProducts).slice(0, 10);
 }
 
-function createFallbackReply(products) {
-  if (products.length > 0) {
-    return `I found ${products.length} matching Kapruka products for you. Please check the product cards below.`;
+function createFallbackReply(products, language) {
+  if (language === "sinhala") {
+    if (products.length > 0) {
+      return `මම ඔබ වෙනුවෙන් ගැලපෙන කප්රුක නිෂ්පාදන ${products.length}ක් සොයා ගත්තා. කරුණාකර පහත දැක්වෙන නිෂ්පාදන කාඩ්පත් පරීක්ෂා කරන්න.`;
+    }
+    return `කනගාටුයි, ඔබ සොයන ආකාරයේ කප්රුක නිෂ්පාදන සොයා ගැනීමට නොහැකි විය. කරුණාකර වෙනත් නමකින් සොයන්න.`;
+  } else if (language === "tanglish") {
+    if (products.length > 0) {
+      return `Amma/Thaththa ta hariyana Kapruka products ${products.length}ak mama hoyagaththa. Please check the product cards below.`;
+    }
+    return `Hari yana Kapruka products hoyaganna bari una. Wena query ekakin try karanna.`;
+  } else {
+    if (products.length > 0) {
+      return `I found ${products.length} matching Kapruka products for you. Please check the product cards below.`;
+    }
+    return `I couldn't find matching Kapruka products. Please try a different or more specific request.`;
   }
-
-  return "I couldn't find matching Kapruka products. Please try a different or more specific request.";
 }
 
 async function createAiReply(message, intent, products) {
+  const language = intent.language || "english";
+  
   try {
+    let languageInstruction = "Reply briefly in 1-2 sentences only. Do not list all products. The frontend will display the product cards separately.";
+    if (language === "sinhala") {
+      languageInstruction += "\nYou MUST reply in Sinhala language Unicode. Make sure to sound polite and helpful (e.g. 'ඔබගේ අම්මා සඳහා සුදුසු තෑගි කිහිපයක් සොයාගත්තා. පහත කාඩ්පත් බලන්න.').";
+    } else if (language === "tanglish") {
+      languageInstruction += "\nYou MUST reply in natural English, but you can use simple Tanglish context words if appropriate (e.g. referring to mother as 'Amma' or father as 'Thaththa' depending on user query). Keep it extremely warm and friendly.";
+    } else {
+      languageInstruction += "\nReply in English.";
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
       contents: `
@@ -273,16 +316,14 @@ ${JSON.stringify(intent, null, 2)}
 Available Kapruka products:
 ${JSON.stringify(products, null, 2)}
 
-Reply briefly in 1-2 sentences only.
-Do not list all products.
-The frontend will display the product cards separately.
+${languageInstruction}
 `,
     });
 
-    return response.text || createFallbackReply(products);
+    return response.text || createFallbackReply(products, language);
   } catch {
     console.log("Gemini unavailable. Using template reply.");
-    return createFallbackReply(products);
+    return createFallbackReply(products, language);
   }
 }
 

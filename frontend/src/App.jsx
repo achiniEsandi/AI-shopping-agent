@@ -147,6 +147,13 @@ function App() {
       // Update dynamic insights
       if (data.intent) {
         setLatestIntent(data.intent);
+        if (data.intent.city) {
+          setDeliveryCity(data.intent.city);
+          setRecipientCity(data.intent.city);
+        }
+        if (data.intent.deliveryDate) {
+          setDeliveryDate(data.intent.deliveryDate);
+        }
       }
       if (data.products) {
         setLatestProducts(data.products);
