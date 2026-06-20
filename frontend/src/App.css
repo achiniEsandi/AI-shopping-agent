@@ -2612,3 +2612,60 @@ body {
     justify-content: space-between;
   }
 }
+
+/* ----------------------------------------------------
+   Multilingual Language Badges
+   ---------------------------------------------------- */
+.panel-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+
+.panel-header-row h2 {
+  margin-bottom: 0 !important;
+}
+
+.lang-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  box-shadow: var(--shadow-sm);
+  display: inline-block;
+  line-height: 1.2;
+}
+
+.lang-badge.english {
+  background: #E5E7EB;
+  color: #374151;
+  border: 1px solid #D1D5DB;
+}
+
+.lang-badge.sinhala {
+  background: #FFFBEB;
+  color: #B45309;
+  border: 1px solid #FCD34D;
+}
+
+.lang-badge.singlish {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #93C5FD;
+}
+
+.lang-badge.tamil {
+  background: #ECFDF5;
+  color: #047857;
+  border: 1px solid #6EE7B7;
+}
+
+.lang-badge.tanglish {
+  background: #F5F3FF;
+  color: #6D28D9;
+  border: 1px solid #C4B5FD;
+}

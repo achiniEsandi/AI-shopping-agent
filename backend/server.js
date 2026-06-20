@@ -118,16 +118,16 @@ function extractIntentWithoutGemini(message) {
 }
 
 async function extractShoppingIntent(message) {
-  // 1. Parse using local NLP baseline dictionary and regex logic
+  // 1. Parse using local baseline parser (Sinhala/Singlish/Tamil/Tanglish fallback)
   const localIntent = normalizeMessageToIntent(message);
 
   try {
-    // 2. Query Gemini for extraction/refinement
+    // 2. Refine using Gemini
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
       contents: `
-Extract shopping intent from this user message. The message can be in English, Sinhala (Unicode), or Tanglish (Sinhala in English letters).
-Produce the query, category, minPrice, maxPrice, deliveryDate, and city in English mapping.
+Extract shopping intent from this user message. The message can be in English, Sinhala, Singlish (Romanized Sinhala), Tamil, or Tanglish (Romanized Tamil).
+Produce the query, category, minPrice, maxPrice, deliveryDate, and city in standard English mapping.
 
 Return ONLY valid JSON. Do not include markdown.
 
@@ -149,7 +149,6 @@ JSON format:
     const text = response.text.trim();
     const geminiIntent = JSON.parse(text);
     
-    // Merge Gemini result and local baseline results
     return {
       language: localIntent.language,
       query: geminiIntent.query || localIntent.query || "gift",
@@ -214,7 +213,7 @@ function getFallbackSearches(message, intent) {
     ];
   }
 
-  if (lower.includes("birthday") || lower.includes("upandinaya")) {
+  if (lower.includes("birthday") || lower.includes("upandinaya") || lower.includes("pirandhanaal")) {
     return [
       { query: "birthday gift", category: "birthday" },
       { query: "cake", category: "cakes" },
@@ -272,12 +271,22 @@ function createFallbackReply(products, language) {
     if (products.length > 0) {
       return `මම ඔබ වෙනුවෙන් ගැලපෙන කප්රුක නිෂ්පාදන ${products.length}ක් සොයා ගත්තා. කරුණාකර පහත දැක්වෙන නිෂ්පාදන කාඩ්පත් පරීක්ෂා කරන්න.`;
     }
-    return `කනගාටුයි, ඔබ සොයන ආකාරයේ කප්රුක නිෂ්පාදන සොයා ගැනීමට නොහැකි විය. කරුණාකර වෙනත් නමකින් සොයන්න.`;
+    return `කනගාටුයි, ගැලපෙන කප්රුක නිෂ්පාදන සොයා ගැනීමට නොහැකි විය. කරුණාකර වෙනත් නමකින් සොයන්න.`;
+  } else if (language === "singlish") {
+    if (products.length > 0) {
+      return `Hari! Oyage request ekata galapena products ${products.length}ak mama hoyagaththa. Pahala thiyena product cards check karala balanna.`;
+    }
+    return `Kanalgathui, galapena Kapruka products mukuth hoyaganna bari una. Wena search ekakin try karanna.`;
+  } else if (language === "tamil") {
+    if (products.length > 0) {
+      return `உங்களுக்குப் பொருத்தமான ${products.length} தயாரிப்புகளை நான் கண்டுபிடித்துள்ளேன். தயவுசெய்து கீழே உள்ள அட்டைகளை சரிபார்க்கவும்.`;
+    }
+    return `வருந்துகிறோம், பொருத்தமான தயாரிப்புகள் எதுவும் கிடைக்கவில்லை. வேறு தேடலை முயற்சிக்கவும்.`;
   } else if (language === "tanglish") {
     if (products.length > 0) {
-      return `Amma/Thaththa ta hariyana Kapruka products ${products.length}ak mama hoyagaththa. Please check the product cards below.`;
+      return `Ungluku poruthamana ${products.length} Kapruka products kandupdichen. Keela irukira cards check panni parunga.`;
     }
-    return `Hari yana Kapruka products hoyaganna bari una. Wena query ekakin try karanna.`;
+    return `Manthukiren, poruthamana products ethuvum kidaikala. Vera query try panni parunga.`;
   } else {
     if (products.length > 0) {
       return `I found ${products.length} matching Kapruka products for you. Please check the product cards below.`;
@@ -291,12 +300,17 @@ async function createAiReply(message, intent, products) {
   
   try {
     let languageInstruction = "Reply briefly in 1-2 sentences only. Do not list all products. The frontend will display the product cards separately.";
+    
     if (language === "sinhala") {
-      languageInstruction += "\nYou MUST reply in Sinhala language Unicode. Make sure to sound polite and helpful (e.g. 'ඔබගේ අම්මා සඳහා සුදුසු තෑගි කිහිපයක් සොයාගත්තා. පහත කාඩ්පත් බලන්න.').";
+      languageInstruction += "\nYou MUST reply in Sinhala language Unicode. Sound polite, warm, and helpful (e.g. 'ඔබගේ අම්මා සඳහා සුදුසු උපන්දින තෑගි කිහිපයක් සොයාගත්තා. පහතින් බලන්න.').";
+    } else if (language === "singlish") {
+      languageInstruction += "\nYou MUST reply in conversational Singlish (Sinhala written in English letters). Sound warm and friendly (e.g. 'Hari! Oyage amma ta galapena birthday gifts tikak hoyagena thiyenawa. Pahalin balanna.').";
+    } else if (language === "tamil") {
+      languageInstruction += "\nYou MUST reply in Tamil language Unicode. Sound polite, warm, and helpful (e.g. 'உங்களுக்குப் பொருத்தமான தயாரிப்புகள் சிலவற்றைக் கண்டறிந்துள்ளேன். கீழே பார்க்கவும்.').";
     } else if (language === "tanglish") {
-      languageInstruction += "\nYou MUST reply in natural English, but you can use simple Tanglish context words if appropriate (e.g. referring to mother as 'Amma' or father as 'Thaththa' depending on user query). Keep it extremely warm and friendly.";
+      languageInstruction += "\nYou MUST reply in conversational Tanglish (Tamil written in English letters). Sound warm and friendly (e.g. 'Amma ku birthday gift kandupdichen. Keela check panni parunga.').";
     } else {
-      languageInstruction += "\nReply in English.";
+      languageInstruction += "\nReply in standard English.";
     }
 
     const response = await ai.models.generateContent({

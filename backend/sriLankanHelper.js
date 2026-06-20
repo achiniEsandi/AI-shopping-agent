@@ -1,30 +1,53 @@
 /**
- * Sri Lankan Localizer Baseline Helper
- * Handles language detection, vocabulary mapping, budget extraction, relative dates,
- * and city recognition for Sinhala and Tanglish queries.
+ * Sri Lankan Multilingual Localizer Helper
+ * Handles English, Sinhala, Singlish, Tamil, and Tanglish queries.
  */
 
 // 1. Language Detection
 export function detectLanguage(message) {
   if (!message) return "english";
   
-  // Sinhala Unicode range check
+  // 1. Sinhala Unicode Range
   if (/[\u0D80-\u0DFF]/.test(message)) {
     return "sinhala";
   }
 
-  // Tanglish keywords lookup
-  const tanglishKeywords = [
-    "ona", "one", "epaa", "yavanna", "yawanna", "karanna", "puluwanda", "puluwada", "mata", "ekak", "wenakan", 
-    "idan", "heta", "anidda", "ada", "thaththa", "thaththi", "appachchi", "amma", "ammi", "malli", "nangi", 
-    "akka", "aiya", "thaththata", "ammata", "nangita", "akkata", "mallita", "aiyata", "ta", "mal", "tikak", 
-    "aduen", "aduwen", "wada", "wedi", "wedipura", "lkr", "rs", "rupeel", "yawala", "yawanna", "ewanna"
+  // 2. Tamil Unicode Range
+  if (/[\u0B80-\u0BFF]/.test(message)) {
+    return "tamil";
+  }
+
+  const lower = message.toLowerCase();
+  const words = lower.split(/[^\w]+/);
+
+  // 3. Singlish Keywords (Romanized Sinhala)
+  const singlishKeywords = [
+    "mama", "mata", "mage", "oya", "oyaata", "oyata", "amma", "ammi", "thaththa", "thaththi", 
+    "akka", "nangi", "malli", "aiya", "hari", "ane", "mokakda", "kohomada", "gift ekak", "ona", 
+    "puluwanda", "karanna", "yawanna", "ganna", "balanna", "one", "epaa", "yavanna", "mallita", 
+    "nangita", "akkata", "aiyata", "ammata", "thaththata", "birinda", "putha", "duwa", "palathuru", 
+    "aduen", "aduwen", "wada", "wedi", "wenakan", "idan"
   ];
+
+  // 4. Tanglish Keywords (Romanized Tamil)
+  const tanglishKeywords = [
+    "enakku", "venum", "amma ku", "akka ku", "thambi", "anna", "nanri", "indru", "naalai", 
+    "pookal", "parisu", "ammaku", "akkaku", "thambiku", "annaku", "veanum", "nandri", "inru", 
+    "nalai", "flowergal", "parishugal", "yenakku"
+  ];
+
+  // Check word match or multi-word substring match
+  const matchesSinglish = words.some(w => singlishKeywords.includes(w) || w.endsWith("ta")) || 
+                          singlishKeywords.some(phrase => phrase.includes(" ") && lower.includes(phrase));
   
-  const words = message.toLowerCase().split(/[^\w]+/);
-  const hasTanglish = words.some(w => tanglishKeywords.includes(w) || w.endsWith("ta") || w.endsWith("la"));
-  
-  if (hasTanglish) {
+  const matchesTanglish = words.some(w => tanglishKeywords.includes(w) || w.endsWith("ku")) || 
+                          tanglishKeywords.some(phrase => phrase.includes(" ") && lower.includes(phrase));
+
+  if (matchesSinglish) {
+    return "singlish";
+  }
+
+  if (matchesTanglish) {
     return "tanglish";
   }
   
@@ -36,20 +59,20 @@ export function getRecipientAndOccasionFromText(message) {
   if (!message) return { recipient: "General", occasion: "Gift Shopping" };
   const lower = message.toLowerCase();
 
-  // Recipient maps (base + suffixed)
+  // Recipient maps (base + Singlish + Tanglish)
   const recipientMap = [
-    { words: ["mother", "mom", "mum", "amma", "ammi", "ammata", "ammita", "අම්මා", "අම්මට", "මවු"], value: "Mother" },
-    { words: ["father", "dad", "thatha", "thaththi", "appachchi", "thaththata", "appachchita", "තාත්තා", "තාත්තට", "පියා"], value: "Father" },
-    { words: ["younger sister", "nangi", "nangita", "නංගි", "නංගිට"], value: "Younger Sister" },
-    { words: ["older sister", "akka", "akkata", "අක්කා", "අක්කට"], value: "Older Sister" },
-    { words: ["younger brother", "malli", "mallita", "මල්ලි", "මල්ලිට"], value: "Younger Brother" },
-    { words: ["older brother", "aiya", "aiyata", "අයියා", "අයියට"], value: "Older Brother" },
-    { words: ["wife", "wifeta", "birinda", "birindata", "බිරිඳ", "බිරිඳට"], value: "Wife" },
-    { words: ["husband", "husbandta", "samiya", "samiyata", "සැමියා", "සැමියට"], value: "Husband" },
-    { words: ["girlfriend", "girl friend", "gf", "gfta", "girlfriendta", "බිරිඳ", "ආදරවන්තිය"], value: "Girlfriend" },
-    { words: ["boyfriend", "boy friend", "bf", "bfta", "boyfriendta", "ආදරවන්තයා"], value: "Boyfriend" },
-    { words: ["friend", "yaluwa", "yaluwata", "mithura", "mithurata", "මිතුරා", "යාලුවා", "මිතුරට"], value: "Friend" },
-    { words: ["kid", "kids", "child", "children", "daruwa", "daruwata", "putha", "duwa", "දරුවා", "පුතා", "දුව"], value: "Children" }
+    { words: ["mother", "mom", "mum", "amma", "ammi", "ammata", "ammita", "amma ku", "ammaku", "අම්මා", "අම්මට", "அம்மா", "அம்மாவுக்கு"], value: "Mother" },
+    { words: ["father", "dad", "thatha", "thaththi", "appachchi", "thaththata", "appachchita", "thaththa ku", "thaththaku", "තාත්තා", "තාත්තට", "තත්තා", "அப்பா", "அப்பாவுக்கு"], value: "Father" },
+    { words: ["younger sister", "nangi", "nangita", "නංගි", "නංගිට", "தங்கை", "தங்கச்சி"], value: "Younger Sister" },
+    { words: ["older sister", "akka", "akkata", "akka ku", "akkaku", "අක්කා", "අක්කට", "அக்கா", "அக்காவுக்கு"], value: "Older Sister" },
+    { words: ["younger brother", "malli", "mallita", "thambi", "thambiku", "මල්ලි", "මල්ලිට", "தம்பி", "தம்பிக்கு"], value: "Younger Brother" },
+    { words: ["older brother", "aiya", "aiyata", "anna", "annaku", "අයියා", "අයියට", "அண்ணன்", "அண்ணனுக்கு"], value: "Older Brother" },
+    { words: ["wife", "wifeta", "birinda", "birindata", "manaivi", "බිරිඳ", "බිරිඳට", "மனைவி"], value: "Wife" },
+    { words: ["husband", "husbandta", "samiya", "samiyata", "kanavan", "සැමියා", "සැමියට", "கணவன்"], value: "Husband" },
+    { words: ["girlfriend", "girl friend", "gf", "gfta", "girlfriendta", "ආදරවන්තිය", "காதலி"], value: "Girlfriend" },
+    { words: ["boyfriend", "boy friend", "bf", "bfta", "boyfriendta", "ආදරවන්තයා", "காதலன்"], value: "Boyfriend" },
+    { words: ["friend", "yaluwa", "yaluwata", "nanban", "mithura", "මිතුරා", "යාලුවා", "நண்பன்"], value: "Friend" },
+    { words: ["kid", "kids", "child", "children", "daruwa", "putha", "duwa", "pillai", "magan", "magal", "දරුවා", "පුතා", "දුව", "பிள்ளை", "மகன்", "மகள்"], value: "Children" }
   ];
 
   let recipient = "General";
@@ -60,13 +83,13 @@ export function getRecipientAndOccasionFromText(message) {
     }
   }
 
-  // Occasion maps
+  // Occasion maps (base + Singlish + Tanglish)
   const occasionMap = [
-    { words: ["birthday", "upandinaya", "upandinayata", "උපන්දිනය", "උපන්දිනයට"], value: "Birthday" },
-    { words: ["anniversary", "warshika samaruma", "samarumata", "සැමරුම", "සැමරුමට"], value: "Anniversary" },
-    { words: ["mothers day", "mother's day", "amma ge dawasa", "මව්වරුන්ගේ දිනය"], value: "Mother's Day" },
-    { words: ["fathers day", "father's day", "thaththa ge dawasa", "තාත්තාගේ දිනය"], value: "Father's Day" },
-    { words: ["valentine", "valentines", "lover", "lovers", "ආදරවන්තයින්ගේ"], value: "Valentine's" }
+    { words: ["birthday", "upandinaya", "upandinayata", "pirandha naal", "pirandhanaal", "උපන්දිනය", "උපන්දිනයට", "பிறந்தநாள்"], value: "Birthday" },
+    { words: ["anniversary", "warshika samaruma", "samarumata", "thirumana naal", "සැමරුම", "සැමරුමට", "திருமண நாள்"], value: "Anniversary" },
+    { words: ["mothers day", "mother's day", "amma ge dawasa", "amma thina", "මව්වරුන්ගේ දිනය", "அன்னை தினம்"], value: "Mother's Day" },
+    { words: ["fathers day", "father's day", "thaththa ge dawasa", "thanthai thina", "තාත්තාගේ දිනය", "தந்தை தினம்"], value: "Father's Day" },
+    { words: ["valentine", "valentines", "lover", "lovers", "kadhalar", "ආදරවන්තයින්ගේ", "காதலர் தினம்"] }
   ];
 
   let occasion = "Gift Shopping";
@@ -86,14 +109,14 @@ export function mapCategoryAndQuery(message) {
   const lower = message.toLowerCase();
 
   const categoryMap = [
-    { words: ["mal", "mal tikak", "flower", "flowers", "මල්"], category: "flowers", query: "flowers" },
-    { words: ["cake", "cakes", "kek", "කේක්"], category: "cakes", query: "cake" },
-    { words: ["chocolate", "chocolates", "choco", "චොකලට්"], category: "chocolates", query: "chocolate" },
-    { words: ["toy", "toys", "sellam badu", "sellam", "සෙල්ලම් බඩු", "සෙල්ලම්"], category: "KidsToys", query: "toys" },
-    { words: ["perfume", "perfumes", "sent", "සුවඳ විලවුන්", "සුවඳ"], category: "Perfumes", query: "perfume" },
-    { words: ["book", "books", "potha", "poth", "පොත", "පොත්"], category: "Books", query: "books" },
-    { words: ["fruit", "fruits", "palathuru", "පලතුරු"], category: "Fruits", query: "fruits" },
-    { words: ["jewellery", "jewelry", "abharana", "ආභරණ"], category: "Jewellery", query: "jewellery" }
+    { words: ["mal", "mal tikak", "pookal", "flower", "flowers", "මල්", "பூக்கள்", "பூ"], category: "flowers", query: "flowers" },
+    { words: ["cake", "cakes", "kek", "කේක්", "கேக்"], category: "cakes", query: "cake" },
+    { words: ["chocolate", "chocolates", "choco", "චොකලට්", "சொක්ලට්", "சாக்லேட்"], category: "chocolates", query: "chocolate" },
+    { words: ["toy", "toys", "sellam badu", "sellam", "vilayattu", "සෙල්ලම් බඩු", "සෙල්ලම්", "விளையாட்டு"], category: "KidsToys", query: "toys" },
+    { words: ["perfume", "perfumes", "sent", "සුවඳ විලවුන්", "සුවඳ", "வாசனை திரவியம்"], category: "Perfumes", query: "perfume" },
+    { words: ["book", "books", "potha", "poth", "puththagam", "පොත", "පොත්", "புத்தகம்"], category: "Books", query: "books" },
+    { words: ["fruit", "fruits", "palathuru", "pazhangal", "පලතුරු", "பழங்கள்"], category: "Fruits", query: "fruits" },
+    { words: ["jewellery", "jewelry", "abharana", "nagai", "ආභරණ", "நகைகள்"], category: "Jewellery", query: "jewellery" }
   ];
 
   for (const item of categoryMap) {
@@ -113,8 +136,8 @@ export function extractBudget(message) {
   const lower = message.toLowerCase();
 
   // Range Extraction Patterns:
-  // e.g. "5000-10000", "5000 idan 10000 wenakan", "රු 5000 සිට 10000 දක්වා"
-  const rangeRegex = /(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})\s*(?:-|to|and|sita|සිට|idan|ඉඳන්|sita|දක්වා|wenakan|වෙනකන්)\s*(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})/i;
+  // e.g. "5000-10000", "5000 idan 10000", "5000 sita 10000", "5000 to 10000"
+  const rangeRegex = /(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})\s*(?:-|to|and|sita|සිට|idan|ඉඳන්|sita|දක්වා|wenakan|වෙනකන්|முதல்|இருந்து|வரை)\s*(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})/i;
   const rangeMatch = lower.match(rangeRegex);
   if (rangeMatch) {
     result.minPrice = Number(rangeMatch[1]);
@@ -123,9 +146,9 @@ export function extractBudget(message) {
   }
 
   // Under / Less Than Patterns:
-  // e.g. "5000 ta aduwen", "under 5000", "5000ට අඩු", "5000 ta wada adu"
-  const underRegex = /(?:under|below|less than|adu|aduwen|අඩු|අඩුවෙන්|max|maximum)\s*(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})/i;
-  const underRegex2 = /(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})\s*(?:ta\s+aduwen|ta\s+wada\s+adu|ta\s+adu|ට\s+අඩු|ට\s+අඩුවෙන්|sita\s+adu)/i;
+  // e.g. "5000 ta aduwen", "under 5000", "5000ට අඩු", "5000 walata adu", "5000 kku kuraindha"
+  const underRegex = /(?:under|below|less than|adu|aduwen|walata\s+adu|අඩු|අඩුවෙන්|max|maximum|kuraindha|குறைந்த)\s*(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})/i;
+  const underRegex2 = /(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})\s*(?:ta\s+aduwen|ta\s+wada\s+adu|ta\s+adu|walata\s+adu|ට\s+අඩු|ට\s+අඩුවෙන්|kku\s+kuraindha|க்கு\s+குறைந்த)/i;
 
   const underMatch = lower.match(underRegex);
   const underMatch2 = lower.match(underRegex2);
@@ -137,9 +160,9 @@ export function extractBudget(message) {
   }
 
   // Over / More Than Patterns:
-  // e.g. "5000 ta wada wedi", "over 5000", "5000 ta wedi", "5000ට වැඩි"
-  const overRegex = /(?:over|above|more than|wedi|wedipura|වැඩි|වැඩියෙන්|min|minimum)\s*(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})/i;
-  const overRegex2 = /(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})\s*(?:ta\s+wada\s+wedi|ta\s+wedi|ට\s+වැඩි|ට\s+වැඩියෙන්)/i;
+  // e.g. "5000 ta wada wedi", "over 5000", "5000 ta wedi", "5000 kku adhigama"
+  const overRegex = /(?:over|above|more than|wedi|wedipura|වැඩි|වැඩියෙන්|min|minimum|adhigama|அதிகமான)\s*(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})/i;
+  const overRegex2 = /(?:rs\.?|lkr|රු\.?|රුපියල්)?\s*(\d{3,7})\s*(?:ta\s+wada\s+wedi|ta\s+wedi|ට\s+වැඩි|ට\s+වැඩියෙන්|kku\s+adhigama|க்கு\s+அதிகமான)/i;
 
   const overMatch = lower.match(overRegex);
   const overMatch2 = lower.match(overRegex2);
@@ -174,14 +197,14 @@ export function extractDeliveryDate(message) {
 
   const formatDate = (d) => d.toISOString().split("T")[0];
 
-  if (lower.includes("ada") || lower.includes("today") || lower.includes("අද") || lower.includes("same day") || lower.includes("same-day")) {
+  if (lower.includes("ada") || lower.includes("today") || lower.includes("inru") || lower.includes("indru") || lower.includes("අද") || lower.includes("இன்று")) {
     return formatDate(colomboTime);
   }
-  if (lower.includes("heta") || lower.includes("tomorrow") || lower.includes("හෙට")) {
+  if (lower.includes("heta") || lower.includes("tomorrow") || lower.includes("naalai") || lower.includes("nalai") || lower.includes("හෙට") || lower.includes("நாளை")) {
     const tomorrow = new Date(colomboTime.getTime() + 24 * 60 * 60 * 1000);
     return formatDate(tomorrow);
   }
-  if (lower.includes("anidda") || lower.includes("day after tomorrow") || lower.includes("අනිද්දා")) {
+  if (lower.includes("anidda") || lower.includes("day after tomorrow") || lower.includes("අනිද්දා") || lower.includes("மற்றைய நாள்")) {
     const dayAfter = new Date(colomboTime.getTime() + 2 * 24 * 60 * 60 * 1000);
     return formatDate(dayAfter);
   }
@@ -195,11 +218,11 @@ export function extractCity(message) {
   const lower = message.toLowerCase();
 
   const cityMap = {
-    "colombo": "Colombo", "kolamba": "Colombo", "කොළඹ": "Colombo",
-    "kandy": "Kandy", "nuwara": "Kandy", "mahanuwara": "Kandy", "මහනුවර": "Kandy",
-    "galle": "Galle", "gaalla": "Galle", "ගාල්ල": "Galle",
-    "negombo": "Negombo", "meegamuwa": "Negombo", "මීගමුව": "Negombo",
-    "kurunegala": "Kurunegala", "කුරුණෑගල": "Kurunegala"
+    "colombo": "Colombo", "kolamba": "Colombo", "කොළඹ": "Colombo", "கொழும்பு": "Colombo",
+    "kandy": "Kandy", "nuwara": "Kandy", "mahanuwara": "Kandy", "මහනුවර": "Kandy", "கண்டி": "Kandy",
+    "galle": "Galle", "gaalla": "Galle", "ගාල්ල": "Galle", "காலி": "Galle",
+    "negombo": "Negombo", "meegamuwa": "Negombo", "මීගමුව": "Negombo", "நீர்கொழும்பு": "Negombo",
+    "kurunegala": "Kurunegala", "කුරුණෑගල": "Kurunegala", "குருணாகல்": "Kurunegala"
   };
 
   for (const key of Object.keys(cityMap)) {
@@ -222,7 +245,6 @@ export function normalizeMessageToIntent(message) {
 
   let searchPhrase = categoryAndQuery.query;
   if (searchPhrase === "gift") {
-    // If no specific category was matched, make a search query from occasion + recipient
     if (recipient !== "General" || occasion !== "Gift Shopping") {
       searchPhrase = `${recipient} ${occasion !== "Gift Shopping" ? occasion : "gift"}`.trim().toLowerCase();
     }

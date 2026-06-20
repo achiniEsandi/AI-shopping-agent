@@ -812,7 +812,18 @@ function App() {
         {/* Dynamic Concierge Insights Sidebar */}
         <aside className="right-panel">
           <div className="panel-block">
-            <h2>Concierge Insights</h2>
+            <div className="panel-header-row">
+              <h2>Concierge Insights</h2>
+              {latestIntent && latestIntent.language && (
+                <span className={`lang-badge ${latestIntent.language}`}>
+                  {latestIntent.language === "sinhala" && "සිංහල"}
+                  {latestIntent.language === "singlish" && "Singlish"}
+                  {latestIntent.language === "tamil" && "தமிழ்"}
+                  {latestIntent.language === "tanglish" && "Tanglish"}
+                  {latestIntent.language === "english" && "English"}
+                </span>
+              )}
+            </div>
 
             {latestIntent ? (
               <div className="insight-card">
