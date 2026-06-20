@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import "./App.css";
+import Button from "./components/Button";
 import {
   MessageCircle,
   Gift,
@@ -1083,7 +1084,9 @@ function App() {
                   <ShoppingBag size={48} className="empty-state-icon" />
                   <h3>Your cart is empty</h3>
                   <p>Browse our catalog and ask your concierge to curate selections for you!</p>
-                  <button className="btn-primary" onClick={() => setIsCartOpen(false)}>Continue Browsing</button>
+                  <Button variant="primary" icon={Compass} onClick={() => setIsCartOpen(false)}>
+                    Continue Browsing
+                  </Button>
                 </div>
               ) : (
                 <div className="cart-list-container">
@@ -1127,9 +1130,9 @@ function App() {
                       <strong>LKR {cartTotal.toLocaleString()}*</strong>
                     </div>
                     <p className="total-hint">*Delivery fee excluded</p>
-                    <button className="btn-primary w-full mt-4" onClick={() => setCheckoutStep(1)}>
-                      Proceed to Checkout <ArrowRight size={14} />
-                    </button>
+                    <Button variant="primary" className="w-full mt-4" icon={ArrowRight} iconPosition="right" onClick={() => setCheckoutStep(1)}>
+                      Proceed to Checkout
+                    </Button>
                   </div>
                 </div>
               )
@@ -1252,14 +1255,15 @@ function App() {
                       </div>
 
                       <div className="checkout-delivery-check">
-                        <button 
-                          type="button" 
-                          className="btn-secondary w-full"
+                        <Button 
+                          variant="secondary" 
+                          className="w-full"
                           onClick={handleCheckDeliveryInCheckout}
-                          disabled={chkDeliveryLoading}
+                          loading={chkDeliveryLoading}
+                          icon={ShieldCheck}
                         >
-                          {chkDeliveryLoading ? <><Loader2 size={12} className="animate-spin" /> Verifying...</> : "Verify Delivery & Check Fee"}
-                        </button>
+                          Verify Delivery & Check Fee
+                        </Button>
                         {chkDeliveryResult && (
                           <div className={`delivery-result-box ${chkDeliveryResult.available ? "success" : "danger"}`}>
                             <strong>{chkDeliveryResult.available ? "Delivery Available!" : "Delivery Not Available"}</strong>
@@ -1389,24 +1393,27 @@ function App() {
                       </div>
 
                       <div className="checkout-actions">
-                        <a 
+                        <Button 
                           href={checkoutResult.checkout_url} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="btn-primary w-full text-center block"
+                          variant="primary" 
+                          className="w-full text-center block"
+                          icon={ArrowRight}
+                          iconPosition="right"
                         >
-                          Proceed to Payment <ArrowRight size={14} />
-                        </a>
-                        <button 
+                          Proceed to Payment
+                        </Button>
+                        <Button 
                           onClick={() => {
                             navigator.clipboard.writeText(checkoutResult.checkout_url);
                             setCopiedLink(true);
                             setTimeout(() => setCopiedLink(false), 2000);
                           }}
-                          className="btn-secondary w-full mt-2"
+                          variant="secondary"
+                          className="w-full mt-2"
+                          icon={copiedLink ? Check : Copy}
                         >
-                          {copiedLink ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy Checkout URL</>}
-                        </button>
+                          {copiedLink ? "Copied!" : "Copy Checkout URL"}
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -1415,18 +1422,20 @@ function App() {
                 {checkoutStep <= 4 && (
                   <footer className="checkout-wizard-footer">
                     {checkoutStep > 1 ? (
-                      <button className="btn-secondary" onClick={() => setCheckoutStep(prev => prev - 1)}>
+                      <Button variant="secondary" icon={ChevronLeft} iconPosition="left" onClick={() => setCheckoutStep(prev => prev - 1)}>
                         Back
-                      </button>
+                      </Button>
                     ) : (
-                      <button className="btn-secondary" onClick={() => setCheckoutStep(0)}>
+                      <Button variant="secondary" onClick={() => setCheckoutStep(0)}>
                         Cancel
-                      </button>
+                      </Button>
                     )}
 
                     {checkoutStep < 4 ? (
-                      <button 
-                        className="btn-primary" 
+                      <Button 
+                        variant="primary" 
+                        icon={ChevronRight}
+                        iconPosition="right"
                         onClick={() => {
                           if (checkoutStep === 1) {
                             if (!recipientName.trim() || !recipientPhone.trim() || !recipientAddress.trim() || !recipientCity.trim()) {
@@ -1449,16 +1458,16 @@ function App() {
                           setCheckoutStep(prev => prev + 1);
                         }}
                       >
-                        Continue <ChevronRight size={14} />
-                      </button>
+                        Continue
+                      </Button>
                     ) : (
-                      <button 
-                        className="btn-primary" 
+                      <Button 
+                        variant="primary" 
                         onClick={handleCreateCheckoutLink}
-                        disabled={checkoutLoading}
+                        loading={checkoutLoading}
                       >
-                        {checkoutLoading ? <><Loader2 size={12} className="animate-spin" /> Generating...</> : "Create Checkout Link"}
-                      </button>
+                        Create Checkout Link
+                      </Button>
                     )}
                   </footer>
                 )}
@@ -1488,7 +1497,7 @@ function App() {
                 <Heart size={48} className="empty-state-icon" />
                 <h3>No saved picks yet</h3>
                 <p>Browse products and heart your favorite gift choices to view them here.</p>
-                <button className="btn-primary" onClick={() => setIsSavedPicksOpen(false)}>Browse Catalog</button>
+                <Button variant="primary" icon={Compass} onClick={() => setIsSavedPicksOpen(false)}>Browse Catalog</Button>
               </div>
             ) : (
               <div className="saved-list-container">
@@ -1547,9 +1556,9 @@ function App() {
                   if (e.key === "Enter") handleTrackOrder();
                 }}
               />
-              <button onClick={handleTrackOrder} disabled={trackingLoading}>
-                {trackingLoading ? <Loader2 size={14} className="animate-spin" /> : "Track Order"}
-              </button>
+              <Button onClick={handleTrackOrder} loading={trackingLoading} icon={Package}>
+                Track Order
+              </Button>
             </div>
 
             {trackingError && (
@@ -1578,7 +1587,12 @@ function App() {
                   <div className="status-info">
                     <p><strong>Order Number:</strong> {trackingData.order_number}</p>
                     <p><strong>Order Date:</strong> {trackingData.order_date}</p>
-                    <p><strong>Grand Total:</strong> {trackingData.amount}</p>
+                    <p>
+                      <strong>Grand Total:</strong>{" "}
+                      {typeof trackingData.amount === "object" && trackingData.amount !== null
+                        ? `${trackingData.amount.currency} ${Number(trackingData.amount.value).toLocaleString()}`
+                        : trackingData.amount}
+                    </p>
                   </div>
                 </div>
 

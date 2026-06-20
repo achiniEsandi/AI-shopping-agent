@@ -22,8 +22,18 @@ const ai = new GoogleGenAI({
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.set("etag", false);
+
 app.use(cors());
 app.use(express.json());
+
+// Disable caching globally for API endpoints to prevent 304 Not Modified statuses
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  next();
+});
 
 app.get("/", (req, res) => {
   res.send("Kapruka AI Shopping Agent backend is running");

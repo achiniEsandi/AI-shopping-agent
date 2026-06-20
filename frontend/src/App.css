@@ -2669,3 +2669,115 @@ body {
   color: #6D28D9;
   border: 1px solid #C4B5FD;
 }
+
+/* ====================================================
+   Luxury Button System
+   ==================================================== */
+.luxury-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  position: relative;
+  overflow: hidden;
+  outline: none;
+}
+
+.luxury-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.luxury-btn.btn-primary {
+  background: var(--primary);
+  color: var(--surface);
+  box-shadow: 0 4px 12px rgba(215, 25, 32, 0.15);
+}
+
+.luxury-btn.btn-primary:hover:not(:disabled) {
+  background: var(--primary-dark);
+  box-shadow: 0 6px 20px rgba(215, 25, 32, 0.3);
+  transform: translateY(-2px);
+}
+
+.luxury-btn.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.luxury-btn.btn-secondary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.luxury-btn.btn-secondary:hover:not(:disabled) {
+  background: var(--border-light);
+  border-color: var(--text-muted);
+  transform: translateY(-2px);
+}
+
+.luxury-btn.btn-secondary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.luxury-btn.btn-outline {
+  background: transparent;
+  border: 2px solid var(--luxury-gold);
+  color: var(--luxury-gold);
+}
+
+.luxury-btn.btn-outline:hover:not(:disabled) {
+  background: var(--luxury-gold);
+  color: #111827;
+  transform: translateY(-2px);
+}
+
+.luxury-btn.btn-text {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 8px 16px;
+}
+
+.luxury-btn.btn-text:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--border-light);
+}
+
+.btn-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.luxury-btn:hover .btn-icon.icon-right {
+  transform: translateX(4px);
+}
+
+.luxury-btn:hover .btn-icon.icon-left {
+  transform: translateX(-4px);
+}
+
+/* Spinner styling inside buttons */
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
