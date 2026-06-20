@@ -39,6 +39,85 @@ app.get("/", (req, res) => {
   res.send("Kapruka AI Shopping Agent backend is running");
 });
 
+// Mock in-memory database of users for Tier Tracking and Concierge Management
+const users = [
+  { id: "1", name: "John Jayawardene", email: "john@kapruka.com", password: "password123", tier: "Diamond" },
+  { id: "2", name: "Sarah Perera", email: "sarah@kapruka.com", password: "password123", tier: "Gold" },
+  { id: "3", name: "Dilshan Silva", email: "dilshan@kapruka.com", password: "password123", tier: "Standard" }
+];
+
+app.post("/login", (req, res) => {
+  const { email, password } = req.body;
+  
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+
+  const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+  if (!user) {
+    return res.status(401).json({ error: "Invalid email or password" });
+  }
+
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    tier: user.tier
+  });
+});
+
+app.post("/register", (req, res) => {
+  const { name, email, password, tier } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: "Name, email, and password are required" });
+  }
+
+  const exists = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  if (exists) {
+    return res.status(400).json({ error: "Email is already registered" });
+  }
+
+  const newUser = {
+    id: String(users.length + 1),
+    name: name.trim(),
+    email: email.trim(),
+    password: password,
+    tier: tier || "Standard"
+  };
+
+  users.push(newUser);
+
+  res.status(201).json({
+    id: newUser.id,
+    name: newUser.name,
+    email: newUser.email,
+    tier: newUser.tier
+  });
+});
+
+app.post("/upgrade-tier", (req, res) => {
+  const { email, tier } = req.body;
+
+  if (!email || !tier) {
+    return res.status(400).json({ error: "Email and selected tier are required" });
+  }
+
+  const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  user.tier = tier;
+
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    tier: user.tier
+  });
+});
+
 function extractIntentWithoutGemini(message) {
   const lower = message.toLowerCase();
 

@@ -47,6 +47,21 @@ function App() {
   const [catalogSearchLoading, setCatalogSearchLoading] = useState(false);
   const [activeSearchQuery, setActiveSearchQuery] = useState("");
 
+  // User Authentication & Management States
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem("kapruka_user");
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authTab, setAuthTab] = useState("login"); // 'login' | 'register' | 'profile'
+  const [authName, setAuthName] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authTier, setAuthTier] = useState("Standard");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([
     {
@@ -56,6 +71,15 @@ function App() {
     },
   ]);
   const [loading, setLoading] = useState(false);
+
+  // Textarea Ref & Auto-Grow Effect to prevent scroll overflow arrows
+  const textareaRef = React.useRef(null);
+  React.useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [message]);
   
   // Dynamic shopping intelligence states
   const [latestIntent, setLatestIntent] = useState(null);
@@ -78,6 +102,7 @@ function App() {
 
   // 3. Mobile responsiveness Sidebar State
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
 
   // 4. Guided Checkout Wizard States (within Cart Drawer)
   const [checkoutStep, setCheckoutStep] = useState(0); // 0: Cart Review, 1: Recipient, 2: Delivery, 3: Gift Message, 4: Confirm, 5: Success
@@ -176,6 +201,14 @@ function App() {
     }
   };
 
+  const handleOccasionSelect = (promptText) => {
+    setMessage(promptText);
+    setIsRightPanelOpen(false);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
   const handleCatalogSearch = async (query) => {
     if (!query || !query.trim()) return;
     const cleanQuery = query.trim();
@@ -234,6 +267,156 @@ function App() {
     setCatalogSearchResults(null);
     setActiveSearchQuery("");
     setIsMobileSidebarOpen(false);
+  };
+
+  const handleAuthSubmit = async (e) => {
+    if (e) e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+
+    const endpoint = authTab === "login" ? "login" : "register";
+    const payload = authTab === "login" 
+      ? { email: authEmail, password: authPassword }
+      : { name: authName, email: authEmail, password: authPassword, tier: authTier };
+
+    try {
+      const response = await fetch(`http://localhost:5000/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Authentication failed");
+      }
+
+      // Success
+      setCurrentUser(data);
+      localStorage.setItem("kapruka_user", JSON.stringify(data));
+      setIsAuthModalOpen(false);
+      resetAuthForm();
+    } catch (err) {
+      setAuthError(err.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleQuickLogin = async (email, password) => {
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const response = await fetch("http://localhost:5000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Login failed");
+      setCurrentUser(data);
+      localStorage.setItem("kapruka_user", JSON.stringify(data));
+      setIsAuthModalOpen(false);
+      resetAuthForm();
+    } catch (err) {
+      setAuthError(err.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleUpgradeTier = async (newTier) => {
+    if (!currentUser) return;
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const response = await fetch("http://localhost:5000/upgrade-tier", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: currentUser.email, tier: newTier }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Upgrade failed");
+      setCurrentUser(data);
+      localStorage.setItem("kapruka_user", JSON.stringify(data));
+    } catch (err) {
+      setAuthError(err.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem("kapruka_user");
+    setIsAuthModalOpen(false);
+    resetAuthForm();
+  };
+
+  const resetAuthForm = () => {
+    setAuthName("");
+    setAuthEmail("");
+    setAuthPassword("");
+    setAuthTier("Standard");
+    setAuthError("");
+  };
+
+  const getUserInitials = () => {
+    if (!currentUser || !currentUser.name) return "";
+    return currentUser.name
+      .split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("");
+  };
+
+  const handleVoiceSearch = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Voice search is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
+      return;
+    }
+
+    if (isListening) {
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    setIsListening(true);
+
+    recognition.onstart = () => {
+      console.log("Speech recognition started");
+    };
+
+    recognition.onspeechend = () => {
+      recognition.stop();
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+      alert("Voice search error: " + event.error);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      if (transcript) {
+        setMessage((prev) => {
+          const prefix = prev.trim() ? " " : "";
+          return prev + prefix + transcript;
+        });
+      }
+      setIsListening(false);
+    };
+
+    recognition.start();
   };
 
   const getRecipientAndOccasion = () => {
@@ -588,6 +771,11 @@ function App() {
         <div className="mobile-overlay" onClick={() => setIsMobileSidebarOpen(false)}></div>
       )}
 
+      {/* Mobile Right Panel Drawer Overlay */}
+      {isRightPanelOpen && (
+        <div className="mobile-overlay" onClick={() => setIsRightPanelOpen(false)} style={{ zIndex: 90 }}></div>
+      )}
+
       {/* Sidebar */}
       <aside className={`left-sidebar ${isMobileSidebarOpen ? "open" : ""}`}>
         <div className="sidebar-brand">
@@ -644,19 +832,49 @@ function App() {
         <div className="upgrade-card">
           <div className="upgrade-header">
             <Sparkles size={16} className="upgrade-sparkle" />
-            <span>Diamond Tier</span>
+            <span>{currentUser ? `${currentUser.tier} Tier` : "Diamond Tier"}</span>
           </div>
-          <p>Unlock dedicated personal concierge agents & priority same-day delivery.</p>
-          <button>Upgrade Now</button>
+          <p>
+            {currentUser 
+              ? currentUser.tier === "Diamond"
+                ? "You are enjoying our highest tier benefits, including zero delivery fee & personal concierges."
+                : `Upgrade to Diamond Tier to unlock dedicated concierge agents & free shipping.`
+              : "Unlock dedicated personal concierge agents & priority same-day delivery."}
+          </p>
+          <button onClick={() => {
+            if (currentUser) {
+              setAuthTab("profile");
+            } else {
+              setAuthTab("login");
+            }
+            setIsAuthModalOpen(true);
+          }}>
+            {currentUser 
+              ? currentUser.tier === "Diamond" ? "Manage Tier" : "Upgrade Now"
+              : "Track / Upgrade Tier"}
+          </button>
         </div>
 
-        <div className="profile-card">
+        <div className="profile-card" onClick={() => {
+          setAuthTab(currentUser ? "profile" : "login");
+          setIsAuthModalOpen(true);
+        }}>
           <div className="avatar">
-            <UserCircle size={24} />
+            {currentUser ? (
+              <div className="avatar-initials">{getUserInitials()}</div>
+            ) : (
+              <UserCircle size={24} />
+            )}
           </div>
           <div>
-            <strong>Guest Shopper</strong>
-            <p>Premium Member</p>
+            <strong>{currentUser ? currentUser.name : "Guest Shopper"}</strong>
+            <p>
+              {currentUser ? (
+                <span className={`tier-tag ${currentUser.tier.toLowerCase()}`}>{currentUser.tier} Member</span>
+              ) : (
+                "Anonymous Guest"
+              )}
+            </p>
           </div>
         </div>
       </aside>
@@ -711,6 +929,10 @@ function App() {
           }} title="View Cart">
             <ShoppingBag size={18} />
             {cart.length > 0 && <span className="topbar-badge">{cartCount}</span>}
+          </button>
+
+          <button className="icon-btn right-panel-toggle-btn" onClick={() => setIsRightPanelOpen(true)} title="Concierge Insights">
+            <Compass size={18} />
           </button>
         </div>
       </header>
@@ -922,6 +1144,7 @@ function App() {
               </button>
 
               <textarea
+                ref={textareaRef}
                 value={message}
                 rows={1}
                 onChange={(e) => setMessage(e.target.value)}
@@ -934,8 +1157,17 @@ function App() {
                 }}
               />
 
-              <button className="mini-action" title="Voice Search">
-                <Mic size={18} />
+              <button 
+                type="button"
+                className={`mini-action ${isListening ? "voice-active" : ""}`} 
+                onClick={handleVoiceSearch}
+                title={isListening ? "Listening..." : "Voice Search"}
+              >
+                {isListening ? (
+                  <span className="voice-pulse"></span>
+                ) : (
+                  <Mic size={18} />
+                )}
               </button>
               
               <button className="send-action" onClick={() => handleSend()} disabled={loading} title="Send Message">
@@ -946,10 +1178,13 @@ function App() {
         </section>
 
         {/* Dynamic Concierge Insights Sidebar */}
-        <aside className="right-panel">
+        <aside className={`right-panel ${isRightPanelOpen ? "open" : ""}`}>
           <div className="panel-block">
             <div className="panel-header-row">
               <h2>Concierge Insights</h2>
+              <button className="mobile-right-panel-close" onClick={() => setIsRightPanelOpen(false)} title="Close Panel">
+                <X size={16} />
+              </button>
               {latestIntent && latestIntent.language && (
                 <span className={`lang-badge ${latestIntent.language}`}>
                   {latestIntent.language === "sinhala" && "සිංහල"}
@@ -1080,10 +1315,48 @@ function App() {
             </div>
           </div>
 
-          <div className="quote-box">
-            <p>
-              “I’m monitoring live Kapruka catalogs via MCP, prioritizing matched budgets, in-stock products, and delivery slots.”
-            </p>
+          <div className="occasion-calendar-card">
+            <div className="calendar-header">
+              <CalendarDays size={14} className="calendar-title-icon" />
+              <span>Gifting Calendar</span>
+            </div>
+            <div className="occasions-list">
+              <div className="occasion-item-card active" onClick={() => handleOccasionSelect("Father's Day cakes and luxury hampers for my Thatha")}>
+                <div className="occasion-date">
+                  <span className="month">JUN</span>
+                  <span className="day">21</span>
+                </div>
+                <div className="occasion-info">
+                  <h4>Father's Day</h4>
+                  <p>Celebrate Father's Day with cakes & gourmet hampers</p>
+                  <span className="quick-action-tag">Tap to ask Concierge</span>
+                </div>
+              </div>
+
+              <div className="occasion-item-card" onClick={() => handleOccasionSelect("Poson Poya traditional white flowers and fruits basket")}>
+                <div className="occasion-date">
+                  <span className="month">JUN</span>
+                  <span className="day">25</span>
+                </div>
+                <div className="occasion-info">
+                  <h4>Poson Poya</h4>
+                  <p>Send traditional white flowers & fresh fruit platters</p>
+                  <span className="quick-action-tag">Tap to ask Concierge</span>
+                </div>
+              </div>
+
+              <div className="occasion-item-card" onClick={() => handleOccasionSelect("Esala Perahera festival celebration hampers and sweet boxes")}>
+                <div className="occasion-date">
+                  <span className="month">AUG</span>
+                  <span className="day">18</span>
+                </div>
+                <div className="occasion-info">
+                  <h4>Esala Perahera</h4>
+                  <p>Send festive hampers & sweet boxes to Kandy</p>
+                  <span className="quick-action-tag">Tap to ask Concierge</span>
+                </div>
+              </div>
+            </div>
           </div>
         </aside>
           </>
@@ -1787,6 +2060,225 @@ function App() {
         <div className="toast-confirmation">
           <CheckCircle2 size={16} className="toast-icon" />
           <span>Added <strong>{cartConfirmation}</strong> to Cart!</span>
+        </div>
+      )}
+
+      {/* User Auth & Profile Modal */}
+      {isAuthModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsAuthModalOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="close-btn" 
+              onClick={() => setIsAuthModalOpen(false)}
+              title="Close Modal"
+            >
+              <X size={18} />
+            </button>
+
+            {authTab === "profile" && currentUser ? (
+              // Logged-in Profile View
+              <div className="profile-dashboard-view">
+                <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "20px" }}>
+                  <div className="avatar-initials" style={{ width: "56px", height: "56px", fontSize: "18px" }}>
+                    {getUserInitials()}
+                  </div>
+                  <div style={{ textAlign: "left" }}>
+                    <h2 style={{ margin: 0 }}>{currentUser.name}</h2>
+                    <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "var(--text-muted)" }}>
+                      {currentUser.email}
+                    </p>
+                    <span className={`tier-tag ${currentUser.tier.toLowerCase()}`} style={{ marginTop: "6px" }}>
+                      {currentUser.tier} Member
+                    </span>
+                  </div>
+                </div>
+
+                {/* Tier Upgrade Management Board */}
+                <div className="tier-management-card">
+                  <h3>Manage Membership Tier</h3>
+                  <div className="tier-options-list">
+                    {[
+                      { name: "Standard", desc: "Basic concierge suggestions, standard delivery fees." },
+                      { name: "Silver", desc: "Silver catalog concierges, 5% off delivery fees." },
+                      { name: "Gold", desc: "Gold Concierge priority, 20% off delivery fees." },
+                      { name: "Diamond", desc: "Dedicated 1-on-1 concierge, zero delivery fees." }
+                    ].map((tierOpt) => {
+                      const isActive = currentUser.tier.toLowerCase() === tierOpt.name.toLowerCase();
+                      return (
+                        <div 
+                          key={tierOpt.name} 
+                          className={`tier-option-row ${isActive ? "active" : ""}`}
+                        >
+                          <div className="tier-option-details">
+                            <strong>
+                              {tierOpt.name} Tier
+                              {isActive && <span style={{ color: "var(--success)", fontSize: "11px", fontWeight: "bold" }}>● Active</span>}
+                            </strong>
+                            <p>{tierOpt.desc}</p>
+                          </div>
+                          {!isActive && (
+                            <Button 
+                              variant="primary" 
+                              className="btn-tier-upgrade"
+                              onClick={() => handleUpgradeTier(tierOpt.name)}
+                              disabled={authLoading}
+                            >
+                              Upgrade
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="logout-btn-container">
+                  <Button 
+                    variant="secondary" 
+                    onClick={handleLogout} 
+                    className="w-full"
+                    icon={UserCircle}
+                  >
+                    Log Out of Account
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              // Login / Register Views
+              <div className="auth-form-view">
+                <div className="auth-tabs">
+                  <button 
+                    className={`auth-tab-btn ${authTab === "login" ? "active" : ""}`}
+                    onClick={() => { setAuthTab("login"); setAuthError(""); }}
+                  >
+                    Sign In
+                  </button>
+                  <button 
+                    className={`auth-tab-btn ${authTab === "register" ? "active" : ""}`}
+                    onClick={() => { setAuthTab("register"); setAuthError(""); }}
+                  >
+                    Create Account
+                  </button>
+                </div>
+
+                {/* Quick Logins Section */}
+                {authTab === "login" && (
+                  <div className="quick-login-section">
+                    <h4>Demo Accounts (Quick Login)</h4>
+                    <div className="quick-login-grid">
+                      <button 
+                        className="quick-user-btn"
+                        onClick={() => handleQuickLogin("john@kapruka.com", "password123")}
+                        disabled={authLoading}
+                      >
+                        <div className="quick-user-info">
+                          <strong>John Jayawardene</strong>
+                          <span>john@kapruka.com</span>
+                        </div>
+                        <span className="tier-tag diamond">Diamond Tier</span>
+                      </button>
+                      <button 
+                        className="quick-user-btn"
+                        onClick={() => handleQuickLogin("sarah@kapruka.com", "password123")}
+                        disabled={authLoading}
+                      >
+                        <div className="quick-user-info">
+                          <strong>Sarah Perera</strong>
+                          <span>sarah@kapruka.com</span>
+                        </div>
+                        <span className="tier-tag gold">Gold Tier</span>
+                      </button>
+                      <button 
+                        className="quick-user-btn"
+                        onClick={() => handleQuickLogin("dilshan@kapruka.com", "password123")}
+                        disabled={authLoading}
+                      >
+                        <div className="quick-user-info">
+                          <strong>Dilshan Silva</strong>
+                          <span>dilshan@kapruka.com</span>
+                        </div>
+                        <span className="tier-tag standard">Standard Tier</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={handleAuthSubmit} className="form-group-list" style={{ textAlign: "left" }}>
+                  {authTab === "register" && (
+                    <div className="form-group">
+                      <label>Full Name</label>
+                      <input 
+                        required
+                        value={authName}
+                        onChange={(e) => setAuthName(e.target.value)}
+                        placeholder="e.g. John Jayawardene"
+                        disabled={authLoading}
+                      />
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label>Email Address</label>
+                    <input 
+                      required
+                      type="email"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      placeholder="e.g. john@kapruka.com"
+                      disabled={authLoading}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Password</label>
+                    <input 
+                      required
+                      type="password"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      placeholder="••••••••"
+                      disabled={authLoading}
+                    />
+                  </div>
+
+                  {authTab === "register" && (
+                    <div className="form-group">
+                      <label>Desired Membership Tier</label>
+                      <select 
+                        value={authTier}
+                        onChange={(e) => setAuthTier(e.target.value)}
+                        disabled={authLoading}
+                      >
+                        <option value="Standard">Standard Tier</option>
+                        <option value="Silver">Silver Tier</option>
+                        <option value="Gold">Gold Tier</option>
+                        <option value="Diamond">Diamond Tier</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {authError && (
+                    <div className="checkout-error-banner" style={{ margin: "10px 0 0 0" }}>
+                      <strong>Error</strong>
+                      <p>{authError}</p>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: "18px" }}>
+                    <Button 
+                      type="submit" 
+                      variant="primary" 
+                      className="w-full"
+                      loading={authLoading}
+                      icon={authTab === "login" ? ShieldCheck : Sparkles}
+                    >
+                      {authTab === "login" ? "Sign In" : "Register Account"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
