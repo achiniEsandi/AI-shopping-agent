@@ -103,6 +103,7 @@ function App() {
   // 3. Mobile responsiveness Sidebar State
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
+  const [showAllOccasions, setShowAllOccasions] = useState(false);
 
   // 4. Guided Checkout Wizard States (within Cart Drawer)
   const [checkoutStep, setCheckoutStep] = useState(0); // 0: Cart Review, 1: Recipient, 2: Delivery, 3: Gift Message, 4: Confirm, 5: Success
@@ -135,6 +136,19 @@ function App() {
     "What are the delivery fees?",
     "Birthday gift for my mother under Rs. 5000",
     "Same-day flowers in Colombo",
+  ];
+
+  const seasonalOccasions = [
+    { name: "Valentine's Day", month: "FEB", day: "14", desc: "Send roses, chocolates & luxury gift sets to your loved ones", prompt: "Valentine's Day luxury roses, chocolates, and premium gift sets" },
+    { name: "Sinhala & Tamil New Year", month: "APR", day: "13", desc: "Celebrate Avurudu with traditional sweetmeats & gift hampers", prompt: "Avurudu traditional sweetmeats kavum kokis and gift hampers" },
+    { name: "Mother's Day", month: "MAY", day: "10", desc: "Show love to Amma with fresh flowers & luxury gift sets", prompt: "Mother's Day fresh flowers cake and luxury spa gift sets" },
+    { name: "Vesak Poya", month: "MAY", day: "26", desc: "Send Vesak lanterns, traditional sweets & vegetarian hampers", prompt: "Vesak Poya lanterns flowers and vegetarian food hampers" },
+    { name: "Father's Day", month: "JUN", day: "21", desc: "Celebrate Thatha with cakes & gourmet hampers", prompt: "Father's Day cakes and luxury hampers for my Thatha", active: true },
+    { name: "Poson Poya", month: "JUN", day: "25", desc: "Send traditional white flowers & fresh fruit platters", prompt: "Poson Poya traditional white flowers and fruits basket" },
+    { name: "Esala Perahera", month: "AUG", day: "18", desc: "Send festive hampers & sweet boxes to Kandy", prompt: "Esala Perahera festival celebration hampers and sweet boxes" },
+    { name: "Teachers' Day", month: "OCT", day: "06", desc: "Honor teachers with luxury pens, notebooks & flowers", prompt: "Teachers' Day gift mugs pens and thank you flowers" },
+    { name: "Deepavali", month: "NOV", day: "14", desc: "Celebrate Diwali with sweet boxes & brass oil lamps", prompt: "Deepavali sweets box brass oil lamps and Diwali gift hampers" },
+    { name: "Christmas Day", month: "DEC", day: "25", desc: "Celebrate Christmas with hampers, cakes, and decorated trees", prompt: "Christmas hampers log cakes and decorative pine trees" },
   ];
 
   // Cart helper calculations
@@ -1320,43 +1334,30 @@ function App() {
               <CalendarDays size={14} className="calendar-title-icon" />
               <span>Gifting Calendar</span>
             </div>
-            <div className="occasions-list">
-              <div className="occasion-item-card active" onClick={() => handleOccasionSelect("Father's Day cakes and luxury hampers for my Thatha")}>
-                <div className="occasion-date">
-                  <span className="month">JUN</span>
-                  <span className="day">21</span>
-                </div>
-                <div className="occasion-info">
-                  <h4>Father's Day</h4>
-                  <p>Celebrate Father's Day with cakes & gourmet hampers</p>
-                  <span className="quick-action-tag">Tap to ask Concierge</span>
-                </div>
-              </div>
-
-              <div className="occasion-item-card" onClick={() => handleOccasionSelect("Poson Poya traditional white flowers and fruits basket")}>
-                <div className="occasion-date">
-                  <span className="month">JUN</span>
-                  <span className="day">25</span>
-                </div>
-                <div className="occasion-info">
-                  <h4>Poson Poya</h4>
-                  <p>Send traditional white flowers & fresh fruit platters</p>
-                  <span className="quick-action-tag">Tap to ask Concierge</span>
-                </div>
-              </div>
-
-              <div className="occasion-item-card" onClick={() => handleOccasionSelect("Esala Perahera festival celebration hampers and sweet boxes")}>
-                <div className="occasion-date">
-                  <span className="month">AUG</span>
-                  <span className="day">18</span>
-                </div>
-                <div className="occasion-info">
-                  <h4>Esala Perahera</h4>
-                  <p>Send festive hampers & sweet boxes to Kandy</p>
-                  <span className="quick-action-tag">Tap to ask Concierge</span>
-                </div>
-              </div>
+            <div className="occasions-list" style={showAllOccasions ? { maxHeight: "280px", overflowY: "auto", paddingRight: "4px" } : {}}>
+              {seasonalOccasions
+                .filter((occ) => showAllOccasions || occ.active || ["Poson Poya", "Esala Perahera"].includes(occ.name))
+                .map((occ) => (
+                  <div 
+                    key={occ.name}
+                    className={`occasion-item-card ${occ.active ? "active" : ""}`} 
+                    onClick={() => handleOccasionSelect(occ.prompt)}
+                  >
+                    <div className="occasion-date">
+                      <span className="month">{occ.month}</span>
+                      <span className="day">{occ.day}</span>
+                    </div>
+                    <div className="occasion-info">
+                      <h4>{occ.name}</h4>
+                      <p>{occ.desc}</p>
+                      <span className="quick-action-tag">Tap to ask Concierge</span>
+                    </div>
+                  </div>
+                ))}
             </div>
+            <button className="calendar-expand-btn" onClick={() => setShowAllOccasions(!showAllOccasions)}>
+              {showAllOccasions ? "Show Upcoming" : "Show All Year Events"}
+            </button>
           </div>
         </aside>
           </>
