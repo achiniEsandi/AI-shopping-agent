@@ -41,8 +41,11 @@ function App() {
   const [deliveryResult, setDeliveryResult] = useState(null);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
   
-  // Search input state
+  // Search input and catalog search states
   const [searchQuery, setSearchQuery] = useState("");
+  const [catalogSearchResults, setCatalogSearchResults] = useState(null); // null: chat mode, array: search results
+  const [catalogSearchLoading, setCatalogSearchLoading] = useState(false);
+  const [activeSearchQuery, setActiveSearchQuery] = useState("");
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([
@@ -173,9 +176,31 @@ function App() {
     }
   };
 
-  const handleSearchSubmit = () => {
-    if (!searchQuery.trim()) return;
-    handleSend(searchQuery);
+  const handleCatalogSearch = async (query) => {
+    if (!query || !query.trim()) return;
+    const cleanQuery = query.trim();
+    setCatalogSearchLoading(true);
+    setActiveSearchQuery(cleanQuery);
+    setCatalogSearchResults([]);
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/test-search?q=${encodeURIComponent(cleanQuery)}`
+      );
+      const data = await response.json();
+      setCatalogSearchResults(data || []);
+    } catch (err) {
+      console.error("Catalog search failed", err);
+      setCatalogSearchResults([]);
+    } finally {
+      setCatalogSearchLoading(false);
+    }
+  };
+
+  const handleClearCatalogSearch = () => {
+    setSearchQuery("");
+    setCatalogSearchResults(null);
+    setActiveSearchQuery("");
   };
 
   const handleViewDetails = async (productId) => {
@@ -206,6 +231,8 @@ function App() {
     setSelectedProduct(null);
     setMessage("");
     setSearchQuery("");
+    setCatalogSearchResults(null);
+    setActiveSearchQuery("");
     setIsMobileSidebarOpen(false);
   };
 
@@ -651,16 +678,26 @@ function App() {
         </div>
 
         <div className="topbar-right">
-          <form className="search-box" onSubmit={(e) => {
+          <form className="luxury-search-box" onSubmit={(e) => {
             e.preventDefault();
-            handleSearchSubmit();
+            handleCatalogSearch(searchQuery);
           }}>
             <Search size={16} className="search-icon" />
             <input 
-              placeholder="Search catalog..." 
+              placeholder="Search live catalog..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <button 
+                type="button" 
+                className="search-clear-btn" 
+                onClick={handleClearCatalogSearch}
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </form>
 
           <button className="icon-btn" onClick={() => setIsSavedPicksOpen(true)} title="Saved Picks">
@@ -679,9 +716,107 @@ function App() {
       </header>
 
       {/* Main shell split in two */}
-      <main className="main-shell">
-        <section className="chat-section">
-          <div className="chat-scroll">
+      <main className="main-shell" style={catalogSearchResults !== null ? { gridTemplateColumns: "1fr" } : {}}>
+        {catalogSearchResults !== null ? (
+          <section className="catalog-search-results-section">
+            <header className="results-header">
+              <div className="results-title-area">
+                <Button 
+                  variant="secondary" 
+                  icon={ChevronLeft} 
+                  onClick={handleClearCatalogSearch}
+                  className="back-to-chat-btn"
+                >
+                  Back to Chat
+                </Button>
+                <h2>Search Results for "{activeSearchQuery}"</h2>
+              </div>
+              <span className="results-count">
+                {catalogSearchLoading ? "Searching..." : `${catalogSearchResults.length} items found`}
+              </span>
+            </header>
+
+            <div className="results-content-scroll">
+              {catalogSearchLoading ? (
+                <div className="results-loading-state">
+                  <Loader2 size={36} className="animate-spin text-muted" />
+                  <p>Searching live Kapruka catalog via MCP...</p>
+                </div>
+              ) : catalogSearchResults.length === 0 ? (
+                <div className="results-empty-state">
+                  <Search size={48} className="empty-state-icon" />
+                  <h3>No matching catalog products</h3>
+                  <p>We couldn't find any direct matches in the live catalog. Try asking our AI concierge in the chat for custom suggestions!</p>
+                  <Button variant="primary" icon={MessageCircle} onClick={handleClearCatalogSearch}>
+                    Open AI Chat Concierge
+                  </Button>
+                </div>
+              ) : (
+                <div className="results-grid">
+                  {catalogSearchResults.map((product) => (
+                    <article className="stitched-card" key={product.id}>
+                      <div className="stitched-image">
+                        <img src={product.image} alt={product.name} />
+                        
+                        <button 
+                          className={`card-heart-btn ${isProductSaved(product.id) ? "saved" : ""}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSavePick(product, false);
+                          }}
+                          title={isProductSaved(product.id) ? "Remove from Saved" : "Save Pick"}
+                        >
+                          <Heart size={14} fill={isProductSaved(product.id) ? "var(--primary)" : "none"} />
+                        </button>
+
+                        <div className="badge-row">
+                          <span className="badge badge-mcp">
+                            <ShieldCheck size={10} /> Live MCP
+                          </span>
+                          <span className="badge badge-stock">
+                            <CheckCircle2 size={10} /> In stock
+                          </span>
+                        </div>
+                        {product.inStock && (
+                          <div className="delivery-badge">
+                            <Sparkles size={10} /> SAME DAY
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="stitched-body">
+                        <h3>{product.name}</h3>
+
+                        <div className="stitched-footer">
+                          <strong>LKR {product.price?.toLocaleString()}</strong>
+                          <div className="card-actions">
+                            <button 
+                              onClick={() => handleAddToCart(product, false)} 
+                              className="btn-add-cart" 
+                              title="Add to Cart"
+                            >
+                              <ShoppingBag size={14} />
+                            </button>
+                            <button onClick={() => handleViewDetails(product.id)} className="btn-details">
+                              {loadingProductId === product.id ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <>Details <ChevronRight size={12} /></>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        ) : (
+          <>
+            <section className="chat-section">
+              <div className="chat-scroll">
             {messages.map((msg, index) => (
               <div
                 className={`chat-row ${msg.role}`}
@@ -951,6 +1086,8 @@ function App() {
             </p>
           </div>
         </aside>
+          </>
+        )}
       </main>
 
       {/* Selected Product Modal Details */}
